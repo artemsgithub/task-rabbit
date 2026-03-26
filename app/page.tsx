@@ -96,6 +96,24 @@ export default function Home() {
     resetForm();
   };
 
+  const handleSave = () => {
+    if (tasks.length === 0) return;
+
+    const updated: Project = {
+      id: activeProject?.id || generateId(),
+      title: activeProject?.title || context || "Untitled Project",
+      context,
+      tasks,
+      plan: activeProject?.plan || [],
+      createdAt: activeProject?.createdAt || Date.now(),
+    };
+
+    saveProject(updated);
+    setProjects(loadProjects());
+    setActiveProject(updated);
+    if (appView === "new") setAppView("project");
+  };
+
   const organize = async () => {
     setLoading(true);
     setError(null);
@@ -239,6 +257,7 @@ export default function Home() {
                 context={context}
                 onContextChange={setContext}
                 onOrganize={organize}
+                onSave={handleSave}
                 loading={loading}
               />
             </div>
@@ -251,7 +270,7 @@ export default function Home() {
         )}
 
         {/* ── View Project ── */}
-        {appView === "project" && activeProject && sorted && (
+        {appView === "project" && activeProject && (
           <div>
             <button
               onClick={goHome}
@@ -269,15 +288,17 @@ export default function Home() {
                 <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm md:sticky md:top-8">
                   <TaskInput
                     tasks={tasks}
-                    onAddTask={(t) => setTasks((prev) => [...prev, t])}
+                    onAddTask={(t) => setTasks((prev) => [t, ...prev])}
                     onRemoveTask={(i) =>
                       setTasks((prev) => prev.filter((_, idx) => idx !== i))
                     }
-                    onBulkAdd={(t) => setTasks((prev) => [...prev, ...t])}
+                    onBulkAdd={(t) => setTasks((prev) => [...t, ...prev])}
                     context={context}
                     onContextChange={setContext}
                     onOrganize={organize}
+                    onSave={handleSave}
                     loading={loading}
+                    newestFirst
                   />
                 </div>
                 {error && (
@@ -289,61 +310,72 @@ export default function Home() {
 
               {/* Right panel — Results */}
               <div className="flex-1 min-w-0">
-                {/* Controls */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3">
-                  <div>
-                    <h2 className="text-xl font-bold text-gray-900">
-                      {activeProject.title}
-                    </h2>
-                    <p className="text-sm text-gray-400 mt-0.5">
-                      {sorted.length} tasks
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <select
-                      value={sortBy}
-                      onChange={(e) => setSortBy(e.target.value as SortMode)}
-                      className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 text-gray-700 outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="order">Sort: Step Order</option>
-                      <option value="priority">Sort: Priority</option>
-                      <option value="phase">Sort: Phase</option>
-                      <option value="time">Sort: Time Estimate</option>
-                    </select>
-                    <div className="flex rounded-lg border border-gray-300 overflow-hidden">
-                      <button
-                        onClick={() => setView("list")}
-                        className={`px-3 py-1.5 text-sm font-medium transition-colors ${
-                          view === "list"
-                            ? "bg-blue-600 text-white"
-                            : "bg-white text-gray-600 hover:bg-gray-50"
-                        }`}
-                      >
-                        List
-                      </button>
-                      <button
-                        onClick={() => setView("kanban")}
-                        className={`px-3 py-1.5 text-sm font-medium transition-colors ${
-                          view === "kanban"
-                            ? "bg-blue-600 text-white"
-                            : "bg-white text-gray-600 hover:bg-gray-50"
-                        }`}
-                      >
-                        Kanban
-                      </button>
+                {sorted && sorted.length > 0 ? (
+                  <>
+                    {/* Controls */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3">
+                      <div>
+                        <h2 className="text-xl font-bold text-gray-900">
+                          {activeProject.title}
+                        </h2>
+                        <p className="text-sm text-gray-400 mt-0.5">
+                          {sorted.length} tasks
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <select
+                          value={sortBy}
+                          onChange={(e) => setSortBy(e.target.value as SortMode)}
+                          className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 text-gray-700 outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="order">Sort: Step Order</option>
+                          <option value="priority">Sort: Priority</option>
+                          <option value="phase">Sort: Phase</option>
+                          <option value="time">Sort: Time Estimate</option>
+                        </select>
+                        <div className="flex rounded-lg border border-gray-300 overflow-hidden">
+                          <button
+                            onClick={() => setView("list")}
+                            className={`px-3 py-1.5 text-sm font-medium transition-colors ${
+                              view === "list"
+                                ? "bg-blue-600 text-white"
+                                : "bg-white text-gray-600 hover:bg-gray-50"
+                            }`}
+                          >
+                            List
+                          </button>
+                          <button
+                            onClick={() => setView("kanban")}
+                            className={`px-3 py-1.5 text-sm font-medium transition-colors ${
+                              view === "kanban"
+                                ? "bg-blue-600 text-white"
+                                : "bg-white text-gray-600 hover:bg-gray-50"
+                            }`}
+                          >
+                            Kanban
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Views */}
+                    {view === "list" ? (
+                      <div className="space-y-3">
+                        {sorted.map((t) => (
+                          <TaskCard key={t.order} task={t} />
+                        ))}
+                      </div>
+                    ) : (
+                      <KanbanView tasks={sorted} />
+                    )}
+                  </>
+                ) : (
+                  <div className="flex items-center justify-center h-48 text-gray-400 text-sm">
+                    <div className="text-center">
+                      <p className="mb-1">No organized plan yet</p>
+                      <p>Add tasks and click &quot;Organize Tasks&quot; to generate a plan</p>
                     </div>
                   </div>
-                </div>
-
-                {/* Views */}
-                {view === "list" ? (
-                  <div className="space-y-3">
-                    {sorted.map((t) => (
-                      <TaskCard key={t.order} task={t} />
-                    ))}
-                  </div>
-                ) : (
-                  <KanbanView tasks={sorted} />
                 )}
               </div>
             </div>

@@ -10,7 +10,9 @@ interface TaskInputProps {
   context: string;
   onContextChange: (context: string) => void;
   onOrganize: () => void;
+  onSave?: () => void;
   loading: boolean;
+  newestFirst?: boolean;
 }
 
 export default function TaskInput({
@@ -21,7 +23,9 @@ export default function TaskInput({
   context,
   onContextChange,
   onOrganize,
+  onSave,
   loading,
+  newestFirst = false,
 }: TaskInputProps) {
   const [singleTask, setSingleTask] = useState("");
   const [bulkText, setBulkText] = useState("");
@@ -53,8 +57,12 @@ export default function TaskInput({
     }
   };
 
+  const displayTasks = newestFirst ? [...tasks].reverse() : tasks;
+  const getOriginalIndex = (displayIndex: number) =>
+    newestFirst ? tasks.length - 1 - displayIndex : displayIndex;
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Project Context */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -134,65 +142,79 @@ export default function TaskInput({
         </div>
       )}
 
+      {/* Action Buttons — always visible above the task list */}
+      <div className="flex gap-2">
+        <button
+          onClick={onOrganize}
+          disabled={tasks.length === 0 || loading}
+          className="flex-1 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all font-semibold text-sm flex items-center justify-center gap-2"
+        >
+          {loading ? (
+            <>
+              <svg
+                className="animate-spin h-4 w-4"
+                viewBox="0 0 24 24"
+                fill="none"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                />
+              </svg>
+              Organizing...
+            </>
+          ) : (
+            "Organize Tasks"
+          )}
+        </button>
+        {onSave && (
+          <button
+            onClick={onSave}
+            disabled={tasks.length === 0 || loading}
+            className="py-2.5 px-4 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors font-medium text-sm"
+          >
+            Save
+          </button>
+        )}
+      </div>
+
       {/* Task List */}
       {tasks.length > 0 && (
         <div>
           <h3 className="text-sm font-medium text-gray-700 mb-2">
             Tasks ({tasks.length})
           </h3>
-          <ul className="space-y-1.5">
-            {tasks.map((task, i) => (
-              <li
-                key={i}
-                className="flex items-center justify-between px-3 py-2 bg-gray-50 rounded-lg border border-gray-200"
-              >
-                <span className="text-gray-800 text-sm">{task}</span>
-                <button
-                  onClick={() => onRemoveTask(i)}
-                  className="ml-2 text-gray-400 hover:text-red-500 transition-colors text-lg leading-none"
-                  aria-label={`Remove "${task}"`}
+          <ul className="space-y-1.5 max-h-[400px] overflow-y-auto">
+            {displayTasks.map((task, displayIndex) => {
+              const originalIndex = getOriginalIndex(displayIndex);
+              return (
+                <li
+                  key={originalIndex}
+                  className="flex items-center justify-between px-3 py-2 bg-gray-50 rounded-lg border border-gray-200"
                 >
-                  ×
-                </button>
-              </li>
-            ))}
+                  <span className="text-gray-800 text-sm">{task}</span>
+                  <button
+                    onClick={() => onRemoveTask(originalIndex)}
+                    className="ml-2 text-gray-400 hover:text-red-500 transition-colors text-lg leading-none shrink-0"
+                    aria-label={`Remove "${task}"`}
+                  >
+                    ×
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         </div>
       )}
-
-      {/* Organize Button */}
-      <button
-        onClick={onOrganize}
-        disabled={tasks.length === 0 || loading}
-        className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all font-semibold text-base flex items-center justify-center gap-2"
-      >
-        {loading ? (
-          <>
-            <svg
-              className="animate-spin h-5 w-5"
-              viewBox="0 0 24 24"
-              fill="none"
-            >
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-              />
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-              />
-            </svg>
-            Organizing...
-          </>
-        ) : (
-          "Organize Tasks"
-        )}
-      </button>
     </div>
   );
 }
