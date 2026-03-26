@@ -298,7 +298,6 @@ export default function Home() {
                     onOrganize={organize}
                     onSave={handleSave}
                     loading={loading}
-                    newestFirst
                   />
                 </div>
                 {error && (
