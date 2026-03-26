@@ -198,7 +198,7 @@ export default function TaskInput({
               const originalIndex = getOriginalIndex(displayIndex);
               return (
                 <li
-                  key={originalIndex}
+                  key={`${originalIndex}-${task}`}
                   className="flex items-center justify-between px-3 py-2 bg-gray-50 rounded-lg border border-gray-200"
                 >
                   <span className="text-gray-800 text-sm">{task}</span>
