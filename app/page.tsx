@@ -141,15 +141,19 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-5 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
           <div
             onClick={goHome}
-            className="cursor-pointer"
+            className="cursor-pointer flex items-center gap-3"
           >
-            <h1 className="text-2xl font-bold text-gray-900">Task Organizer</h1>
-            <p className="text-gray-500 text-sm mt-0.5">
-              AI-powered task planning
-            </p>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.png" alt="Hoplist logo" className="w-10 h-10" />
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 font-serif">Hoplist</h1>
+              <p className="text-gray-500 text-sm mt-0.5">
+                hop through your list
+              </p>
+            </div>
           </div>
           {appView !== "new" && (
             <button
@@ -177,10 +181,10 @@ export default function Home() {
                   </svg>
                 </div>
                 <h2 className="text-lg font-semibold text-gray-900 mb-1">
-                  No projects yet
+                  No hoplists yet
                 </h2>
                 <p className="text-gray-500 mb-6 text-sm">
-                  Create your first project to get an AI-organized task plan
+                  Create your first hoplist to get an AI-organized task plan
                 </p>
                 <button
                   onClick={startNewProject}

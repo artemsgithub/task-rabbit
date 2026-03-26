@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Task Organizer",
+  title: "Hoplist — hop through your list",
   description: "AI-powered task organization and planning",
 };
 
