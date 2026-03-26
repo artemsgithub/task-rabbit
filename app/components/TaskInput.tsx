@@ -117,13 +117,6 @@ export default function TaskInput({
       {/* Bulk Input */}
       {inputMode === "bulk" && (
         <div className="space-y-2">
-          <textarea
-            value={bulkText}
-            onChange={(e) => setBulkText(e.target.value)}
-            placeholder="Paste tasks here, one per line..."
-            rows={5}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-y text-gray-900 placeholder-gray-400"
-          />
           <button
             onClick={handleBulkAdd}
             disabled={!bulkText.trim()}
@@ -131,6 +124,13 @@ export default function TaskInput({
           >
             Add All
           </button>
+          <textarea
+            value={bulkText}
+            onChange={(e) => setBulkText(e.target.value)}
+            placeholder="Paste tasks here, one per line..."
+            rows={5}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-y text-gray-900 placeholder-gray-400"
+          />
         </div>
       )}
 
