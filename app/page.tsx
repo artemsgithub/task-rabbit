@@ -55,6 +55,7 @@ export default function Home() {
   // Result view state
   const [view, setView] = useState<ViewMode>("list");
   const [sortBy, setSortBy] = useState<SortMode>("order");
+  const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     setProjects(loadProjects());
@@ -63,8 +64,21 @@ export default function Home() {
   const resetForm = () => {
     setTasks([]);
     setCompletedTasks(new Set());
+    setCompletedSteps(new Set());
     setContext("");
     setError(null);
+  };
+
+  const toggleStep = (order: number) => {
+    setCompletedSteps((prev) => {
+      const next = new Set(prev);
+      if (next.has(order)) {
+        next.delete(order);
+      } else {
+        next.add(order);
+      }
+      return next;
+    });
   };
 
   const toggleComplete = (task: string) => {
@@ -89,6 +103,7 @@ export default function Home() {
     setActiveProject(project);
     setTasks(project.tasks);
     setCompletedTasks(new Set(project.completedTasks || []));
+    setCompletedSteps(new Set(project.completedSteps || []));
     setContext(project.context);
     setError(null);
     setView("list");
@@ -120,6 +135,7 @@ export default function Home() {
       context,
       tasks,
       completedTasks: [...completedTasks],
+      completedSteps: [...completedSteps],
       plan: activeProject?.plan || [],
       createdAt: activeProject?.createdAt || Date.now(),
     };
@@ -153,6 +169,7 @@ export default function Home() {
         context,
         tasks,
         completedTasks: [...completedTasks],
+        completedSteps: [...completedSteps],
         plan: data.plan,
         createdAt: activeProject?.createdAt || Date.now(),
       };
@@ -381,12 +398,24 @@ export default function Home() {
                     {/* Views */}
                     {view === "list" ? (
                       <div className="space-y-3">
-                        {sorted.map((t) => (
-                          <TaskCard key={t.order} task={t} />
+                        {[
+                          ...sorted.filter((t) => !completedSteps.has(t.order)),
+                          ...sorted.filter((t) => completedSteps.has(t.order)),
+                        ].map((t) => (
+                          <TaskCard
+                            key={t.order}
+                            task={t}
+                            done={completedSteps.has(t.order)}
+                            onToggleDone={toggleStep}
+                          />
                         ))}
                       </div>
                     ) : (
-                      <KanbanView tasks={sorted} />
+                      <KanbanView
+                        tasks={sorted}
+                        completedSteps={completedSteps}
+                        onToggleDone={toggleStep}
+                      />
                     )}
                   </>
                 ) : (

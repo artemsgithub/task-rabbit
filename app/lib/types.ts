@@ -14,6 +14,7 @@ export interface Project {
   context: string;
   tasks: string[];
   completedTasks?: string[];
+  completedSteps?: number[];
   plan: OrganizedTask[];
   createdAt: number;
 }

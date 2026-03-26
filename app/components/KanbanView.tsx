@@ -9,7 +9,15 @@ const phaseColors: Record<number, string> = {
   4: "bg-rose-500",
 };
 
-export default function KanbanView({ tasks }: { tasks: OrganizedTask[] }) {
+export default function KanbanView({
+  tasks,
+  completedSteps = new Set(),
+  onToggleDone,
+}: {
+  tasks: OrganizedTask[];
+  completedSteps?: Set<number>;
+  onToggleDone?: (order: number) => void;
+}) {
   const phases: Record<string, OrganizedTask[]> = {};
   for (const task of tasks) {
     if (!phases[task.phase]) phases[task.phase] = [];
@@ -20,32 +28,41 @@ export default function KanbanView({ tasks }: { tasks: OrganizedTask[] }) {
 
   return (
     <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 overflow-hidden">
-      {phaseNames.map((phase, idx) => (
-        <div
-          key={phase}
-          className="bg-gray-100 rounded-xl border border-gray-200 min-w-0"
-        >
-          <div className="p-3 border-b border-gray-200 flex items-center gap-2">
-            <div
-              className={`w-3 h-3 rounded-full shrink-0 ${phaseColors[idx % 5]}`}
-            />
-            <h3 className="font-semibold text-gray-800 text-sm truncate">
-              {phase}
-            </h3>
-            <span className="ml-auto text-xs text-gray-500 bg-gray-200 px-2 py-0.5 rounded-full shrink-0">
-              {phases[phase].length}
-            </span>
-          </div>
+      {phaseNames.map((phase, idx) => {
+        const phaseTasks = phases[phase].sort((a, b) => a.order - b.order);
+        const active = phaseTasks.filter((t) => !completedSteps.has(t.order));
+        const done = phaseTasks.filter((t) => completedSteps.has(t.order));
 
-          <div className="p-3 space-y-3 max-h-[600px] overflow-y-auto">
-            {phases[phase]
-              .sort((a, b) => a.order - b.order)
-              .map((task) => (
-                <TaskCard key={task.order} task={task} />
+        return (
+          <div
+            key={phase}
+            className="bg-gray-100 rounded-xl border border-gray-200 min-w-0"
+          >
+            <div className="p-3 border-b border-gray-200 flex items-center gap-2">
+              <div
+                className={`w-3 h-3 rounded-full shrink-0 ${phaseColors[idx % 5]}`}
+              />
+              <h3 className="font-semibold text-gray-800 text-sm truncate">
+                {phase}
+              </h3>
+              <span className="ml-auto text-xs text-gray-500 bg-gray-200 px-2 py-0.5 rounded-full shrink-0">
+                {phaseTasks.length}
+              </span>
+            </div>
+
+            <div className="p-3 space-y-3 max-h-[600px] overflow-y-auto">
+              {[...active, ...done].map((task) => (
+                <TaskCard
+                  key={task.order}
+                  task={task}
+                  done={completedSteps.has(task.order)}
+                  onToggleDone={onToggleDone}
+                />
               ))}
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
