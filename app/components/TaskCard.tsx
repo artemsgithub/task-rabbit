@@ -37,18 +37,11 @@ export default function TaskCard({
 
   return (
     <div
-      className={`relative rounded-xl p-5 shadow-sm transition-all overflow-hidden select-none ${
+      className={`relative rounded-xl p-5 shadow-sm transition-all overflow-hidden ${
         done
           ? "bg-gray-50 border border-gray-200 opacity-60"
           : "bg-white border border-gray-200 hover:shadow-md"
       }`}
-      onMouseDown={startPress}
-      onMouseUp={cancelPress}
-      onMouseLeave={cancelPress}
-      onTouchStart={startPress}
-      onTouchEnd={cancelPress}
-      onTouchCancel={cancelPress}
-      onContextMenu={(e) => e.preventDefault()}
     >
       {/* Crosshatch overlay */}
       {done && (
@@ -83,15 +76,24 @@ export default function TaskCard({
       <div className="relative">
         <div className="flex items-start justify-between gap-2 mb-3">
           <div className="flex items-center gap-3 min-w-0">
-            <span
-              className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold shrink-0 ${
+            {/* Long-press button */}
+            <button
+              className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold shrink-0 select-none transition-colors ${
                 done
-                  ? "bg-gray-400 text-white"
-                  : "bg-blue-600 text-white"
+                  ? "bg-gray-400 text-white hover:bg-gray-500"
+                  : "bg-blue-600 text-white hover:bg-blue-700"
               }`}
+              title="Hold to mark done"
+              onMouseDown={startPress}
+              onMouseUp={cancelPress}
+              onMouseLeave={cancelPress}
+              onTouchStart={startPress}
+              onTouchEnd={cancelPress}
+              onTouchCancel={cancelPress}
+              onContextMenu={(e) => e.preventDefault()}
             >
               {done ? "\u2713" : task.order}
-            </span>
+            </button>
             <h3
               className={`font-semibold text-base leading-tight break-words min-w-0 ${
                 done ? "text-gray-400" : "text-gray-900"
