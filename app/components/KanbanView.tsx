@@ -1,14 +1,5 @@
+import { OrganizedTask } from "../lib/types";
 import TaskCard from "./TaskCard";
-
-interface OrganizedTask {
-  order: number;
-  task: string;
-  phase: string;
-  priority: "High" | "Medium" | "Low";
-  timeEstimate: string;
-  dependencies: string | null;
-  note: string | null;
-}
 
 const phaseColors: Record<number, string> = {
   0: "bg-blue-500",
@@ -34,7 +25,6 @@ export default function KanbanView({ tasks }: { tasks: OrganizedTask[] }) {
           key={phase}
           className="bg-gray-100 rounded-xl border border-gray-200 min-w-0"
         >
-          {/* Column Header */}
           <div className="p-3 border-b border-gray-200 flex items-center gap-2">
             <div
               className={`w-3 h-3 rounded-full shrink-0 ${phaseColors[idx % 5]}`}
@@ -47,7 +37,6 @@ export default function KanbanView({ tasks }: { tasks: OrganizedTask[] }) {
             </span>
           </div>
 
-          {/* Cards */}
           <div className="p-3 space-y-3 max-h-[600px] overflow-y-auto">
             {phases[phase]
               .sort((a, b) => a.order - b.order)

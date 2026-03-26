@@ -1,12 +1,4 @@
-interface OrganizedTask {
-  order: number;
-  task: string;
-  phase: string;
-  priority: "High" | "Medium" | "Low";
-  timeEstimate: string;
-  dependencies: string | null;
-  note: string | null;
-}
+import { OrganizedTask } from "../lib/types";
 
 const priorityColors: Record<string, string> = {
   High: "bg-red-100 text-red-700 border-red-200",

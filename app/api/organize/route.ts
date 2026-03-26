@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 
 const SYSTEM_PROMPT =
-  "You are a project planning expert. Given a list of tasks and a project context, determine the best logical order based on real-world dependencies and best practices. Group tasks into named phases, estimate realistic time for each, assign priority levels, and note any key dependency or tip per task. Return ONLY a valid JSON array. No markdown. No explanation.";
+  "You are a project planning expert. Given a list of tasks and a project context, determine the best logical order based on real-world dependencies and best practices. Group tasks into named phases, estimate realistic time for each, assign priority levels, and note any key dependency or tip per task. Return ONLY valid JSON — no markdown, no explanation. The JSON must be an object with two keys: \"title\" (a short 2-5 word project title derived from the context) and \"tasks\" (the organized array).";
 
 interface OrganizedTask {
   order: number;
@@ -12,6 +12,11 @@ interface OrganizedTask {
   timeEstimate: string;
   dependencies: string | null;
   note: string | null;
+}
+
+interface AIResponse {
+  title: string;
+  tasks: OrganizedTask[];
 }
 
 export async function POST(request: NextRequest) {
@@ -42,7 +47,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const userMessage = `Project context: ${context || "General project"}\n\nTasks to organize:\n${tasks.map((t, i) => `${i + 1}. ${t}`).join("\n")}\n\nReturn a JSON array where each object has: order (number, 1 = do first), task (string), phase (string, e.g. "Preparation", "Execution", "Finishing"), priority ("High" | "Medium" | "Low"), timeEstimate (string, e.g. "2 hours"), dependencies (string or null), note (string or null, max 12 words).`;
+  const userMessage = `Project context: ${context || "General project"}\n\nTasks to organize:\n${tasks.map((t, i) => `${i + 1}. ${t}`).join("\n")}\n\nReturn a JSON object with:\n- "title": a concise 2-5 word project title based on the context\n- "tasks": an array where each object has: order (number, 1 = do first), task (string), phase (string, e.g. "Preparation", "Execution", "Finishing"), priority ("High" | "Medium" | "Low"), timeEstimate (string, e.g. "2 hours"), dependencies (string or null), note (string or null, max 12 words).`;
 
   try {
     const client = new Anthropic({ apiKey });
@@ -62,11 +67,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    let parsed: OrganizedTask[];
+    let parsed: AIResponse;
     try {
       parsed = JSON.parse(textBlock.text);
     } catch {
-      const jsonMatch = textBlock.text.match(/\[[\s\S]*\]/);
+      const jsonMatch = textBlock.text.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
         return NextResponse.json(
           { error: "Failed to parse AI response as JSON" },
@@ -76,14 +81,16 @@ export async function POST(request: NextRequest) {
       parsed = JSON.parse(jsonMatch[0]);
     }
 
-    if (!Array.isArray(parsed)) {
+    if (!parsed.tasks || !Array.isArray(parsed.tasks)) {
       return NextResponse.json(
-        { error: "AI response was not a valid task array" },
+        { error: "AI response was not a valid task plan" },
         { status: 502 }
       );
     }
 
-    return NextResponse.json({ plan: parsed });
+    const title = parsed.title || context || "Untitled Project";
+
+    return NextResponse.json({ title, plan: parsed.tasks });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error";
     console.error("Anthropic API error:", message);
