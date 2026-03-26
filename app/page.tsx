@@ -73,6 +73,9 @@ export default function Home() {
 
   const openProject = (project: Project) => {
     setActiveProject(project);
+    setTasks(project.tasks);
+    setContext(project.context);
+    setError(null);
     setView("list");
     setSortBy("order");
     setAppView("project");
@@ -110,18 +113,18 @@ export default function Home() {
         throw new Error(data.error || "Something went wrong");
       }
 
-      const newProject: Project = {
-        id: generateId(),
+      const updated: Project = {
+        id: activeProject?.id || generateId(),
         title: data.title || context || "Untitled Project",
         context,
         tasks,
         plan: data.plan,
-        createdAt: Date.now(),
+        createdAt: activeProject?.createdAt || Date.now(),
       };
 
-      saveProject(newProject);
+      saveProject(updated);
       setProjects(loadProjects());
-      setActiveProject(newProject);
+      setActiveProject(updated);
       setAppView("project");
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Request failed";
@@ -256,68 +259,90 @@ export default function Home() {
               Back to projects
             </button>
 
-            {/* Controls */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3">
-              <div>
-                <h2 className="text-xl font-bold text-gray-900">
-                  {activeProject.title}
-                </h2>
-                {activeProject.context &&
-                  activeProject.context !== activeProject.title && (
-                    <p className="text-sm text-gray-500 mt-0.5">
-                      {activeProject.context}
-                    </p>
-                  )}
-                <p className="text-sm text-gray-400 mt-1">
-                  {sorted.length} tasks
-                </p>
-              </div>
-              <div className="flex items-center gap-3">
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as SortMode)}
-                  className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 text-gray-700 outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="order">Sort: Step Order</option>
-                  <option value="priority">Sort: Priority</option>
-                  <option value="phase">Sort: Phase</option>
-                  <option value="time">Sort: Time Estimate</option>
-                </select>
-                <div className="flex rounded-lg border border-gray-300 overflow-hidden">
-                  <button
-                    onClick={() => setView("list")}
-                    className={`px-3 py-1.5 text-sm font-medium transition-colors ${
-                      view === "list"
-                        ? "bg-blue-600 text-white"
-                        : "bg-white text-gray-600 hover:bg-gray-50"
-                    }`}
-                  >
-                    List
-                  </button>
-                  <button
-                    onClick={() => setView("kanban")}
-                    className={`px-3 py-1.5 text-sm font-medium transition-colors ${
-                      view === "kanban"
-                        ? "bg-blue-600 text-white"
-                        : "bg-white text-gray-600 hover:bg-gray-50"
-                    }`}
-                  >
-                    Kanban
-                  </button>
+            <div className="flex flex-col md:flex-row gap-8">
+              {/* Left panel — Editable task list */}
+              <div className="md:w-[380px] md:shrink-0">
+                <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm md:sticky md:top-8">
+                  <TaskInput
+                    tasks={tasks}
+                    onAddTask={(t) => setTasks((prev) => [...prev, t])}
+                    onRemoveTask={(i) =>
+                      setTasks((prev) => prev.filter((_, idx) => idx !== i))
+                    }
+                    onBulkAdd={(t) => setTasks((prev) => [...prev, ...t])}
+                    context={context}
+                    onContextChange={setContext}
+                    onOrganize={organize}
+                    loading={loading}
+                  />
                 </div>
+                {error && (
+                  <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
+                    {error}
+                  </div>
+                )}
+              </div>
+
+              {/* Right panel — Results */}
+              <div className="flex-1 min-w-0">
+                {/* Controls */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3">
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900">
+                      {activeProject.title}
+                    </h2>
+                    <p className="text-sm text-gray-400 mt-0.5">
+                      {sorted.length} tasks
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <select
+                      value={sortBy}
+                      onChange={(e) => setSortBy(e.target.value as SortMode)}
+                      className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 text-gray-700 outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="order">Sort: Step Order</option>
+                      <option value="priority">Sort: Priority</option>
+                      <option value="phase">Sort: Phase</option>
+                      <option value="time">Sort: Time Estimate</option>
+                    </select>
+                    <div className="flex rounded-lg border border-gray-300 overflow-hidden">
+                      <button
+                        onClick={() => setView("list")}
+                        className={`px-3 py-1.5 text-sm font-medium transition-colors ${
+                          view === "list"
+                            ? "bg-blue-600 text-white"
+                            : "bg-white text-gray-600 hover:bg-gray-50"
+                        }`}
+                      >
+                        List
+                      </button>
+                      <button
+                        onClick={() => setView("kanban")}
+                        className={`px-3 py-1.5 text-sm font-medium transition-colors ${
+                          view === "kanban"
+                            ? "bg-blue-600 text-white"
+                            : "bg-white text-gray-600 hover:bg-gray-50"
+                        }`}
+                      >
+                        Kanban
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Views */}
+                {view === "list" ? (
+                  <div className="space-y-3">
+                    {sorted.map((t) => (
+                      <TaskCard key={t.order} task={t} />
+                    ))}
+                  </div>
+                ) : (
+                  <KanbanView tasks={sorted} />
+                )}
               </div>
             </div>
-
-            {/* Views */}
-            {view === "list" ? (
-              <div className="space-y-3">
-                {sorted.map((t) => (
-                  <TaskCard key={t.order} task={t} />
-                ))}
-              </div>
-            ) : (
-              <KanbanView tasks={sorted} />
-            )}
           </div>
         )}
       </main>
