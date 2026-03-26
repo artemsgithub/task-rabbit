@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 
 interface TaskInputProps {
   tasks: string[];
+  completedTasks?: Set<string>;
   onAddTask: (task: string) => void;
   onRemoveTask: (index: number) => void;
+  onToggleComplete?: (task: string) => void;
   onBulkAdd: (tasks: string[]) => void;
   context: string;
   onContextChange: (context: string) => void;
@@ -15,10 +17,14 @@ interface TaskInputProps {
   newestFirst?: boolean;
 }
 
+const LONG_PRESS_MS = 500;
+
 export default function TaskInput({
   tasks,
+  completedTasks = new Set(),
   onAddTask,
   onRemoveTask,
+  onToggleComplete,
   onBulkAdd,
   context,
   onContextChange,
@@ -30,6 +36,8 @@ export default function TaskInput({
   const [singleTask, setSingleTask] = useState("");
   const [bulkText, setBulkText] = useState("");
   const [inputMode, setInputMode] = useState<"single" | "bulk">("single");
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressFired = useRef(false);
 
   const handleAddSingle = () => {
     const trimmed = singleTask.trim();
@@ -57,9 +65,29 @@ export default function TaskInput({
     }
   };
 
-  const displayTasks = newestFirst ? [...tasks].reverse() : tasks;
-  const getOriginalIndex = (displayIndex: number) =>
-    newestFirst ? tasks.length - 1 - displayIndex : displayIndex;
+  const startLongPress = useCallback(
+    (task: string) => {
+      longPressFired.current = false;
+      longPressTimer.current = setTimeout(() => {
+        longPressFired.current = true;
+        onToggleComplete?.(task);
+      }, LONG_PRESS_MS);
+    },
+    [onToggleComplete]
+  );
+
+  const cancelLongPress = useCallback(() => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  }, []);
+
+  // Split tasks into active and completed, preserving original indices
+  const indexed = tasks.map((task, i) => ({ task, originalIndex: i }));
+  const activeTasks = indexed.filter((t) => !completedTasks.has(t.task));
+  const doneTasks = indexed.filter((t) => completedTasks.has(t.task));
+  const orderedTasks = [...activeTasks, ...doneTasks];
 
   return (
     <div className="space-y-4">
@@ -192,16 +220,41 @@ export default function TaskInput({
         <div>
           <h3 className="text-sm font-medium text-gray-700 mb-2">
             Tasks ({tasks.length})
+            {doneTasks.length > 0 && (
+              <span className="text-gray-400 font-normal">
+                {" "}
+                · {doneTasks.length} done
+              </span>
+            )}
           </h3>
           <ul className="space-y-1.5 max-h-[400px] overflow-y-auto">
-            {displayTasks.map((task, displayIndex) => {
-              const originalIndex = getOriginalIndex(displayIndex);
+            {orderedTasks.map(({ task, originalIndex }) => {
+              const isDone = completedTasks.has(task);
               return (
                 <li
                   key={`${originalIndex}-${task}`}
-                  className="flex items-center justify-between px-3 py-2 bg-gray-50 rounded-lg border border-gray-200"
+                  className={`flex items-center justify-between px-3 py-2 rounded-lg border select-none transition-colors ${
+                    isDone
+                      ? "bg-gray-100 border-gray-200 opacity-60"
+                      : "bg-gray-50 border-gray-200"
+                  }`}
+                  onMouseDown={() => startLongPress(task)}
+                  onMouseUp={cancelLongPress}
+                  onMouseLeave={cancelLongPress}
+                  onTouchStart={() => startLongPress(task)}
+                  onTouchEnd={cancelLongPress}
+                  onTouchCancel={cancelLongPress}
+                  onContextMenu={(e) => e.preventDefault()}
                 >
-                  <span className="text-gray-800 text-sm">{task}</span>
+                  <span
+                    className={`text-sm ${
+                      isDone
+                        ? "line-through text-gray-400"
+                        : "text-gray-800"
+                    }`}
+                  >
+                    {task}
+                  </span>
                   <button
                     onClick={() => onRemoveTask(originalIndex)}
                     className="ml-2 text-gray-400 hover:text-red-500 transition-colors text-lg leading-none shrink-0"

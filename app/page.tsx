@@ -47,6 +47,7 @@ export default function Home() {
 
   // New project form state
   const [tasks, setTasks] = useState<string[]>([]);
+  const [completedTasks, setCompletedTasks] = useState<Set<string>>(new Set());
   const [context, setContext] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -61,8 +62,21 @@ export default function Home() {
 
   const resetForm = () => {
     setTasks([]);
+    setCompletedTasks(new Set());
     setContext("");
     setError(null);
+  };
+
+  const toggleComplete = (task: string) => {
+    setCompletedTasks((prev) => {
+      const next = new Set(prev);
+      if (next.has(task)) {
+        next.delete(task);
+      } else {
+        next.add(task);
+      }
+      return next;
+    });
   };
 
   const startNewProject = () => {
@@ -74,6 +88,7 @@ export default function Home() {
   const openProject = (project: Project) => {
     setActiveProject(project);
     setTasks(project.tasks);
+    setCompletedTasks(new Set(project.completedTasks || []));
     setContext(project.context);
     setError(null);
     setView("list");
@@ -104,6 +119,7 @@ export default function Home() {
       title: activeProject?.title || context || "Untitled Project",
       context,
       tasks,
+      completedTasks: [...completedTasks],
       plan: activeProject?.plan || [],
       createdAt: activeProject?.createdAt || Date.now(),
     };
@@ -136,6 +152,7 @@ export default function Home() {
         title: data.title || context || "Untitled Project",
         context,
         tasks,
+        completedTasks: [...completedTasks],
         plan: data.plan,
         createdAt: activeProject?.createdAt || Date.now(),
       };
@@ -249,10 +266,12 @@ export default function Home() {
               </h2>
               <TaskInput
                 tasks={tasks}
+                completedTasks={completedTasks}
                 onAddTask={(t) => setTasks((prev) => [...prev, t])}
                 onRemoveTask={(i) =>
                   setTasks((prev) => prev.filter((_, idx) => idx !== i))
                 }
+                onToggleComplete={toggleComplete}
                 onBulkAdd={(t) => setTasks((prev) => [...prev, ...t])}
                 context={context}
                 onContextChange={setContext}
@@ -288,10 +307,12 @@ export default function Home() {
                 <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm md:sticky md:top-8">
                   <TaskInput
                     tasks={tasks}
+                    completedTasks={completedTasks}
                     onAddTask={(t) => setTasks((prev) => [t, ...prev])}
                     onRemoveTask={(i) =>
                       setTasks((prev) => prev.filter((_, idx) => idx !== i))
                     }
+                    onToggleComplete={toggleComplete}
                     onBulkAdd={(t) => setTasks((prev) => [...t, ...prev])}
                     context={context}
                     onContextChange={setContext}

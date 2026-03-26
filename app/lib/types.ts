@@ -13,6 +13,7 @@ export interface Project {
   title: string;
   context: string;
   tasks: string[];
+  completedTasks?: string[];
   plan: OrganizedTask[];
   createdAt: number;
 }
