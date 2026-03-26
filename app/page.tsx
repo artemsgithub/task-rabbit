@@ -104,10 +104,10 @@ export default function Home() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-        <div className={`flex flex-col ${hasResults ? "lg:flex-row" : ""} gap-8`}>
+        <div className={`flex flex-col ${hasResults ? "md:flex-row" : ""} gap-8`}>
           {/* Left panel — Input */}
-          <div className={`${hasResults ? "lg:w-[400px] lg:shrink-0" : "max-w-2xl mx-auto w-full"}`}>
-            <div className={`bg-white rounded-xl border border-gray-200 p-6 shadow-sm ${hasResults ? "lg:sticky lg:top-8" : ""}`}>
+          <div className={`${hasResults ? "md:w-[380px] md:shrink-0" : "max-w-2xl mx-auto w-full"}`}>
+            <div className={`bg-white rounded-xl border border-gray-200 p-6 shadow-sm ${hasResults ? "md:sticky md:top-8" : ""}`}>
               <TaskInput
                 tasks={tasks}
                 onAddTask={addTask}
