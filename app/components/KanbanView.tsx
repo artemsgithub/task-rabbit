@@ -28,19 +28,21 @@ export default function KanbanView({ tasks }: { tasks: OrganizedTask[] }) {
   const phaseNames = Object.keys(phases);
 
   return (
-    <div className="flex gap-4 overflow-x-auto pb-4">
+    <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3">
       {phaseNames.map((phase, idx) => (
         <div
           key={phase}
-          className="flex-shrink-0 w-80 bg-gray-100 rounded-xl border border-gray-200"
+          className="bg-gray-100 rounded-xl border border-gray-200 min-w-0"
         >
           {/* Column Header */}
           <div className="p-3 border-b border-gray-200 flex items-center gap-2">
             <div
-              className={`w-3 h-3 rounded-full ${phaseColors[idx % 5]}`}
+              className={`w-3 h-3 rounded-full shrink-0 ${phaseColors[idx % 5]}`}
             />
-            <h3 className="font-semibold text-gray-800 text-sm">{phase}</h3>
-            <span className="ml-auto text-xs text-gray-500 bg-gray-200 px-2 py-0.5 rounded-full">
+            <h3 className="font-semibold text-gray-800 text-sm truncate">
+              {phase}
+            </h3>
+            <span className="ml-auto text-xs text-gray-500 bg-gray-200 px-2 py-0.5 rounded-full shrink-0">
               {phases[phase].length}
             </span>
           </div>
