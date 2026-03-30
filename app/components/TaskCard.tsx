@@ -1,6 +1,3 @@
-"use client";
-
-import { useRef, useCallback } from "react";
 import { OrganizedTask } from "../lib/types";
 
 const priorityColors: Record<string, string> = {
@@ -8,8 +5,6 @@ const priorityColors: Record<string, string> = {
   Medium: "bg-amber-100 text-amber-700 border-amber-200",
   Low: "bg-green-100 text-green-700 border-green-200",
 };
-
-const LONG_PRESS_MS = 500;
 
 export default function TaskCard({
   task,
@@ -20,21 +15,6 @@ export default function TaskCard({
   done?: boolean;
   onToggleDone?: (order: number) => void;
 }) {
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const startPress = useCallback(() => {
-    timer.current = setTimeout(() => {
-      onToggleDone?.(task.order);
-    }, LONG_PRESS_MS);
-  }, [onToggleDone, task.order]);
-
-  const cancelPress = useCallback(() => {
-    if (timer.current) {
-      clearTimeout(timer.current);
-      timer.current = null;
-    }
-  }, []);
-
   return (
     <div
       className={`relative rounded-xl p-5 shadow-sm transition-all overflow-hidden ${
@@ -76,24 +56,31 @@ export default function TaskCard({
       <div className="relative">
         <div className="flex items-start justify-between gap-2 mb-3">
           <div className="flex items-center gap-3 min-w-0">
-            {/* Long-press button */}
+            {/* Checkbox */}
             <button
-              className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold shrink-0 select-none transition-colors ${
+              onClick={() => onToggleDone?.(task.order)}
+              className={`flex items-center justify-center w-5 h-5 rounded border-2 shrink-0 transition-colors ${
                 done
-                  ? "bg-gray-400 text-white hover:bg-gray-500"
-                  : "bg-blue-600 text-white hover:bg-blue-700"
+                  ? "bg-green-500 border-green-500 text-white"
+                  : "border-gray-300 hover:border-blue-400"
               }`}
-              title="Hold to mark done"
-              onMouseDown={startPress}
-              onMouseUp={cancelPress}
-              onMouseLeave={cancelPress}
-              onTouchStart={startPress}
-              onTouchEnd={cancelPress}
-              onTouchCancel={cancelPress}
-              onContextMenu={(e) => e.preventDefault()}
+              aria-label={done ? "Mark as not done" : "Mark as done"}
             >
-              {done ? "\u2713" : task.order}
+              {done && (
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              )}
             </button>
+            <span
+              className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold shrink-0 ${
+                done
+                  ? "bg-gray-400 text-white"
+                  : "bg-blue-600 text-white"
+              }`}
+            >
+              {task.order}
+            </span>
             <h3
               className={`font-semibold text-base leading-tight break-words min-w-0 ${
                 done ? "text-gray-400" : "text-gray-900"
