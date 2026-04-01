@@ -6,14 +6,20 @@ const priorityColors: Record<string, string> = {
   Low: "bg-green-100 text-green-700 border-green-200",
 };
 
+type Priority = "High" | "Medium" | "Low";
+
+const priorities: Priority[] = ["High", "Medium", "Low"];
+
 export default function TaskCard({
   task,
   done = false,
   onToggleDone,
+  onPriorityChange,
 }: {
   task: OrganizedTask;
   done?: boolean;
   onToggleDone?: (order: number) => void;
+  onPriorityChange?: (taskName: string, priority: Priority) => void;
 }) {
   return (
     <div
@@ -89,15 +95,33 @@ export default function TaskCard({
               {task.task}
             </h3>
           </div>
-          <span
-            className={`px-2.5 py-0.5 text-xs font-semibold rounded-full border shrink-0 ${
-              done
-                ? "bg-gray-100 text-gray-400 border-gray-200"
-                : priorityColors[task.priority] || priorityColors.Medium
-            }`}
-          >
-            {task.priority}
-          </span>
+          {onPriorityChange && !done ? (
+            <select
+              value={task.priority}
+              onChange={(e) =>
+                onPriorityChange(task.task, e.target.value as Priority)
+              }
+              className={`text-xs font-semibold rounded-full border shrink-0 px-2 py-0.5 outline-none cursor-pointer appearance-none text-center ${
+                priorityColors[task.priority] || priorityColors.Medium
+              }`}
+            >
+              {priorities.map((p) => (
+                <option key={p} value={p}>
+                  {p}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <span
+              className={`px-2.5 py-0.5 text-xs font-semibold rounded-full border shrink-0 ${
+                done
+                  ? "bg-gray-100 text-gray-400 border-gray-200"
+                  : priorityColors[task.priority] || priorityColors.Medium
+              }`}
+            >
+              {task.priority}
+            </span>
+          )}
         </div>
 
         <div className="flex flex-wrap gap-2 text-sm mb-2">

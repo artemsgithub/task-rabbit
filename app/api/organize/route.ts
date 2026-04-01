@@ -28,7 +28,11 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  let body: { tasks: string[]; context: string };
+  let body: {
+    tasks: string[];
+    context: string;
+    priorityOverrides?: Record<string, string>;
+  };
   try {
     body = await request.json();
   } catch {
@@ -38,7 +42,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { tasks, context } = body;
+  const { tasks, context, priorityOverrides } = body;
 
   if (!Array.isArray(tasks) || tasks.length === 0) {
     return NextResponse.json(
@@ -47,7 +51,15 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const userMessage = `Project context: ${context || "General project"}\n\nTasks to organize:\n${tasks.map((t, i) => `${i + 1}. ${t}`).join("\n")}\n\nReturn a JSON object with:\n- "title": a concise 2-5 word project title based on the context\n- "tasks": an array where each object has: order (number, 1 = do first), task (string), phase (string, e.g. "Preparation", "Execution", "Finishing"), priority ("High" | "Medium" | "Low"), timeEstimate (string, e.g. "2 hours"), dependencies (string or null), note (string or null, max 12 words).`;
+  let priorityNote = "";
+  if (priorityOverrides && Object.keys(priorityOverrides).length > 0) {
+    const overrideList = Object.entries(priorityOverrides)
+      .map(([task, priority]) => `- "${task}": must be ${priority}`)
+      .join("\n");
+    priorityNote = `\n\nIMPORTANT - The user has manually set these priority levels. You MUST use exactly these priorities for the matching tasks:\n${overrideList}`;
+  }
+
+  const userMessage = `Project context: ${context || "General project"}\n\nTasks to organize:\n${tasks.map((t, i) => `${i + 1}. ${t}`).join("\n")}${priorityNote}\n\nReturn a JSON object with:\n- "title": a concise 2-5 word project title based on the context\n- "tasks": an array where each object has: order (number, 1 = do first), task (string), phase (string, e.g. "Preparation", "Execution", "Finishing"), priority ("High" | "Medium" | "Low"), timeEstimate (string, e.g. "2 hours"), dependencies (string or null), note (string or null, max 12 words).`;
 
   try {
     const client = new Anthropic({ apiKey });

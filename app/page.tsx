@@ -56,6 +56,9 @@ export default function Home() {
   const [view, setView] = useState<ViewMode>("list");
   const [sortBy, setSortBy] = useState<SortMode>("order");
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
+  const [priorityOverrides, setPriorityOverrides] = useState<
+    Record<string, "High" | "Medium" | "Low">
+  >({});
 
   useEffect(() => {
     setProjects(loadProjects());
@@ -65,6 +68,7 @@ export default function Home() {
     setTasks([]);
     setCompletedTasks(new Set());
     setCompletedSteps(new Set());
+    setPriorityOverrides({});
     setContext("");
     setError(null);
   };
@@ -79,6 +83,23 @@ export default function Home() {
       }
       return next;
     });
+  };
+
+  const handlePriorityChange = (
+    taskName: string,
+    priority: "High" | "Medium" | "Low"
+  ) => {
+    setPriorityOverrides((prev) => ({ ...prev, [taskName]: priority }));
+    // Also update the active project's plan in-place
+    if (activeProject) {
+      const updatedPlan = activeProject.plan.map((t) =>
+        t.task === taskName ? { ...t, priority } : t
+      );
+      const updated = { ...activeProject, plan: updatedPlan, priorityOverrides: { ...priorityOverrides, [taskName]: priority } };
+      setActiveProject(updated);
+      saveProject(updated);
+      setProjects(loadProjects());
+    }
   };
 
   const toggleComplete = (task: string) => {
@@ -104,6 +125,7 @@ export default function Home() {
     setTasks(project.tasks);
     setCompletedTasks(new Set(project.completedTasks || []));
     setCompletedSteps(new Set(project.completedSteps || []));
+    setPriorityOverrides(project.priorityOverrides || {});
     setContext(project.context);
     setError(null);
     setView("list");
@@ -136,6 +158,7 @@ export default function Home() {
       tasks,
       completedTasks: [...completedTasks],
       completedSteps: [...completedSteps],
+      priorityOverrides,
       plan: activeProject?.plan || [],
       createdAt: activeProject?.createdAt || Date.now(),
     };
@@ -154,7 +177,14 @@ export default function Home() {
       const res = await fetch("/api/organize", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tasks, context }),
+        body: JSON.stringify({
+          tasks,
+          context,
+          priorityOverrides:
+            Object.keys(priorityOverrides).length > 0
+              ? priorityOverrides
+              : undefined,
+        }),
       });
 
       const data = await res.json();
@@ -163,6 +193,14 @@ export default function Home() {
         throw new Error(data.error || "Something went wrong");
       }
 
+      // Merge user priority overrides into the new plan
+      const mergedPlan = data.plan.map(
+        (t: OrganizedTask) =>
+          priorityOverrides[t.task]
+            ? { ...t, priority: priorityOverrides[t.task] }
+            : t
+      );
+
       const updated: Project = {
         id: activeProject?.id || generateId(),
         title: data.title || context || "Untitled Project",
@@ -170,7 +208,8 @@ export default function Home() {
         tasks,
         completedTasks: [...completedTasks],
         completedSteps: [...completedSteps],
-        plan: data.plan,
+        priorityOverrides,
+        plan: mergedPlan,
         createdAt: activeProject?.createdAt || Date.now(),
       };
 
@@ -407,6 +446,7 @@ export default function Home() {
                             task={t}
                             done={completedSteps.has(t.order)}
                             onToggleDone={toggleStep}
+                            onPriorityChange={handlePriorityChange}
                           />
                         ))}
                       </div>
@@ -415,6 +455,7 @@ export default function Home() {
                         tasks={sorted}
                         completedSteps={completedSteps}
                         onToggleDone={toggleStep}
+                        onPriorityChange={handlePriorityChange}
                       />
                     )}
                   </>

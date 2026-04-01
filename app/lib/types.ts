@@ -15,6 +15,7 @@ export interface Project {
   tasks: string[];
   completedTasks?: string[];
   completedSteps?: number[];
+  priorityOverrides?: Record<string, "High" | "Medium" | "Low">;
   plan: OrganizedTask[];
   createdAt: number;
 }

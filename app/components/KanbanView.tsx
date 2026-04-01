@@ -13,10 +13,12 @@ export default function KanbanView({
   tasks,
   completedSteps = new Set(),
   onToggleDone,
+  onPriorityChange,
 }: {
   tasks: OrganizedTask[];
   completedSteps?: Set<number>;
   onToggleDone?: (order: number) => void;
+  onPriorityChange?: (taskName: string, priority: "High" | "Medium" | "Low") => void;
 }) {
   const phases: Record<string, OrganizedTask[]> = {};
   for (const task of tasks) {
@@ -57,6 +59,7 @@ export default function KanbanView({
                   task={task}
                   done={completedSteps.has(task.order)}
                   onToggleDone={onToggleDone}
+                  onPriorityChange={onPriorityChange}
                 />
               ))}
             </div>
