@@ -1,6 +1,19 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  rectSortingStrategy,
+} from "@dnd-kit/sortable";
 import TaskInput from "./components/TaskInput";
 import TaskCard from "./components/TaskCard";
 import KanbanView from "./components/KanbanView";
@@ -51,7 +64,11 @@ export default function Home() {
   const [folders, setFolders] = useState<Folder[]>([]);
   const [appView, setAppView] = useState<AppView>("dashboard");
   const [activeProject, setActiveProject] = useState<Project | null>(null);
-  const [dragProjectId, setDragProjectId] = useState<string | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } })
+  );
 
   // New project form state
   const [tasks, setTasks] = useState<string[]>([]);
@@ -194,66 +211,23 @@ export default function Home() {
     setProjects(loadProjects());
   };
 
-  const handleDragStart = (projectId: string, e: React.DragEvent) => {
-    setDragProjectId(projectId);
-    e.dataTransfer.effectAllowed = "move";
-  };
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
 
-  const handleDragOverProject = (targetId: string, e: React.DragEvent) => {
-    e.preventDefault();
-    if (!dragProjectId || dragProjectId === targetId) return;
-    e.dataTransfer.dropEffect = "move";
-  };
-
-  const handleDropOnProject = (targetId: string) => {
-    if (!dragProjectId || dragProjectId === targetId) return;
     const all = loadProjects();
-    const dragIdx = all.findIndex((p) => p.id === dragProjectId);
-    const targetIdx = all.findIndex((p) => p.id === targetId);
-    if (dragIdx < 0 || targetIdx < 0) return;
-    // Also match folder of target
-    all[dragIdx].folderId = all[targetIdx].folderId;
-    const [moved] = all.splice(dragIdx, 1);
-    all.splice(targetIdx, 0, moved);
+    const activeIdx = all.findIndex((p) => p.id === active.id);
+    const overIdx = all.findIndex((p) => p.id === over.id);
+    if (activeIdx < 0 || overIdx < 0) return;
+
+    // Move to same folder as the target
+    all[activeIdx].folderId = all[overIdx].folderId;
+
+    const [moved] = all.splice(activeIdx, 1);
+    all.splice(overIdx, 0, moved);
     saveProjects(all);
     setProjects(loadProjects());
-    setDragProjectId(null);
-  };
-
-  const handleMoveProject = (projectId: string, direction: "up" | "down") => {
-    const all = loadProjects();
-    const idx = all.findIndex((p) => p.id === projectId);
-    if (idx < 0) return;
-    const project = all[idx];
-    // Find siblings in same folder
-    const siblingIndices = all
-      .map((p, i) => ({ p, i }))
-      .filter(({ p }) =>
-        (p.folderId || undefined) === (project.folderId || undefined)
-      )
-      .map(({ i }) => i);
-    const posInGroup = siblingIndices.indexOf(idx);
-    const swapPos =
-      direction === "up" ? posInGroup - 1 : posInGroup + 1;
-    if (swapPos < 0 || swapPos >= siblingIndices.length) return;
-    const swapIdx = siblingIndices[swapPos];
-    [all[idx], all[swapIdx]] = [all[swapIdx], all[idx]];
-    saveProjects(all);
-    setProjects(loadProjects());
-  };
-
-  const handleDropOnFolder = (folderId: string | undefined, e: React.DragEvent) => {
-    e.preventDefault();
-    if (!dragProjectId) return;
-    const all = loadProjects();
-    const p = all.find((x) => x.id === dragProjectId);
-    if (p) {
-      p.folderId = folderId;
-      saveProjects(all);
-      setProjects(loadProjects());
-    }
-    setDragProjectId(null);
-  };
+  }, []);
 
   const goHome = () => {
     setAppView("dashboard");
@@ -398,7 +372,11 @@ export default function Home() {
                 </button>
               </div>
             ) : (
-              <div>
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-lg font-semibold text-gray-900">
                     Your Projects ({projects.length})
@@ -422,15 +400,7 @@ export default function Home() {
                       (p) => p.folderId === folder.id
                     );
                     return (
-                      <div
-                        key={folder.id}
-                        className="mb-6"
-                        onDragOver={(e) => {
-                          e.preventDefault();
-                          e.dataTransfer.dropEffect = "move";
-                        }}
-                        onDrop={(e) => handleDropOnFolder(folder.id, e)}
-                      >
+                      <div key={folder.id} className="mb-6">
                         <div className="flex items-center gap-2 mb-3">
                           <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
@@ -461,24 +431,24 @@ export default function Home() {
                           </button>
                         </div>
                         {folderProjects.length > 0 ? (
-                          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-                            {folderProjects.map((project, i) => (
-                              <ProjectCard
-                                key={project.id}
-                                project={project}
-                                folders={folders}
-                                onClick={() => openProject(project)}
-                                onDelete={() => handleDelete(project.id)}
-                                onRename={(t) => handleRenameProject(project.id, t)}
-                                onMoveToFolder={(fId) => handleMoveToFolder(project.id, fId)}
-                                onMoveUp={i > 0 ? () => handleMoveProject(project.id, "up") : undefined}
-                                onMoveDown={i < folderProjects.length - 1 ? () => handleMoveProject(project.id, "down") : undefined}
-                                onDragStart={(e) => handleDragStart(project.id, e)}
-                                onDragOver={(e) => handleDragOverProject(project.id, e)}
-                                onDrop={() => handleDropOnProject(project.id)}
-                              />
-                            ))}
-                          </div>
+                          <SortableContext
+                            items={folderProjects.map((p) => p.id)}
+                            strategy={rectSortingStrategy}
+                          >
+                            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                              {folderProjects.map((project) => (
+                                <ProjectCard
+                                  key={project.id}
+                                  project={project}
+                                  folders={folders}
+                                  onClick={() => openProject(project)}
+                                  onDelete={() => handleDelete(project.id)}
+                                  onRename={(t) => handleRenameProject(project.id, t)}
+                                  onMoveToFolder={(fId) => handleMoveToFolder(project.id, fId)}
+                                />
+                              ))}
+                            </div>
+                          </SortableContext>
                         ) : (
                           <div className="border-2 border-dashed border-gray-200 rounded-xl p-6 text-center text-sm text-gray-400">
                             Drag projects here
@@ -495,40 +465,34 @@ export default function Home() {
                   );
                   if (unfiled.length === 0) return null;
                   return (
-                    <div
-                      onDragOver={(e) => {
-                        e.preventDefault();
-                        e.dataTransfer.dropEffect = "move";
-                      }}
-                      onDrop={(e) => handleDropOnFolder(undefined, e)}
-                    >
+                    <div>
                       {folders.length > 0 && (
                         <h3 className="text-sm font-semibold text-gray-500 mb-3">
                           Unfiled
                         </h3>
                       )}
-                      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-                        {unfiled.map((project, i) => (
-                          <ProjectCard
-                            key={project.id}
-                            project={project}
-                            folders={folders}
-                            onClick={() => openProject(project)}
-                            onDelete={() => handleDelete(project.id)}
-                            onRename={(t) => handleRenameProject(project.id, t)}
-                            onMoveToFolder={(fId) => handleMoveToFolder(project.id, fId)}
-                            onMoveUp={i > 0 ? () => handleMoveProject(project.id, "up") : undefined}
-                            onMoveDown={i < unfiled.length - 1 ? () => handleMoveProject(project.id, "down") : undefined}
-                            onDragStart={(e) => handleDragStart(project.id, e)}
-                            onDragOver={(e) => handleDragOverProject(project.id, e)}
-                            onDrop={() => handleDropOnProject(project.id)}
-                          />
-                        ))}
-                      </div>
+                      <SortableContext
+                        items={unfiled.map((p) => p.id)}
+                        strategy={rectSortingStrategy}
+                      >
+                        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                          {unfiled.map((project) => (
+                            <ProjectCard
+                              key={project.id}
+                              project={project}
+                              folders={folders}
+                              onClick={() => openProject(project)}
+                              onDelete={() => handleDelete(project.id)}
+                              onRename={(t) => handleRenameProject(project.id, t)}
+                              onMoveToFolder={(fId) => handleMoveToFolder(project.id, fId)}
+                            />
+                          ))}
+                        </div>
+                      </SortableContext>
                     </div>
                   );
                 })()}
-              </div>
+              </DndContext>
             )}
           </div>
         )}
