@@ -18,6 +18,8 @@ export default function ProjectCard({
   onDelete,
   onRename,
   onMoveToFolder,
+  onMoveUp,
+  onMoveDown,
   onDragStart,
   onDragOver,
   onDrop,
@@ -28,6 +30,8 @@ export default function ProjectCard({
   onDelete: () => void;
   onRename: (newTitle: string) => void;
   onMoveToFolder: (folderId: string | undefined) => void;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
   onDragStart: (e: React.DragEvent) => void;
   onDragOver: (e: React.DragEvent) => void;
   onDrop: (e: React.DragEvent) => void;
@@ -86,7 +90,7 @@ export default function ProjectCard({
               e.stopPropagation();
               setShowMenu(!showMenu);
             }}
-            className="text-gray-300 hover:text-gray-500 transition-colors opacity-0 group-hover:opacity-100 text-sm leading-none p-1"
+            className="text-gray-400 hover:text-gray-600 transition-colors text-sm leading-none p-1"
             aria-label="Project options"
           >
             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
@@ -112,6 +116,36 @@ export default function ProjectCard({
           >
             Rename
           </button>
+          {(onMoveUp || onMoveDown) && (
+            <div className="flex border-t border-gray-100">
+              <button
+                disabled={!onMoveUp}
+                onClick={() => {
+                  setShowMenu(false);
+                  onMoveUp?.();
+                }}
+                className="flex-1 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-default flex items-center justify-center gap-1"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
+                </svg>
+                Up
+              </button>
+              <button
+                disabled={!onMoveDown}
+                onClick={() => {
+                  setShowMenu(false);
+                  onMoveDown?.();
+                }}
+                className="flex-1 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-default flex items-center justify-center gap-1"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+                Down
+              </button>
+            </div>
+          )}
           {folders.length > 0 && (
             <div className="border-t border-gray-100">
               <p className="px-4 py-1.5 text-xs text-gray-400 font-medium">

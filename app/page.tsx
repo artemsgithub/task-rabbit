@@ -220,6 +220,28 @@ export default function Home() {
     setDragProjectId(null);
   };
 
+  const handleMoveProject = (projectId: string, direction: "up" | "down") => {
+    const all = loadProjects();
+    const idx = all.findIndex((p) => p.id === projectId);
+    if (idx < 0) return;
+    const project = all[idx];
+    // Find siblings in same folder
+    const siblingIndices = all
+      .map((p, i) => ({ p, i }))
+      .filter(({ p }) =>
+        (p.folderId || undefined) === (project.folderId || undefined)
+      )
+      .map(({ i }) => i);
+    const posInGroup = siblingIndices.indexOf(idx);
+    const swapPos =
+      direction === "up" ? posInGroup - 1 : posInGroup + 1;
+    if (swapPos < 0 || swapPos >= siblingIndices.length) return;
+    const swapIdx = siblingIndices[swapPos];
+    [all[idx], all[swapIdx]] = [all[swapIdx], all[idx]];
+    saveProjects(all);
+    setProjects(loadProjects());
+  };
+
   const handleDropOnFolder = (folderId: string | undefined, e: React.DragEvent) => {
     e.preventDefault();
     if (!dragProjectId) return;
@@ -440,7 +462,7 @@ export default function Home() {
                         </div>
                         {folderProjects.length > 0 ? (
                           <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-                            {folderProjects.map((project) => (
+                            {folderProjects.map((project, i) => (
                               <ProjectCard
                                 key={project.id}
                                 project={project}
@@ -449,6 +471,8 @@ export default function Home() {
                                 onDelete={() => handleDelete(project.id)}
                                 onRename={(t) => handleRenameProject(project.id, t)}
                                 onMoveToFolder={(fId) => handleMoveToFolder(project.id, fId)}
+                                onMoveUp={i > 0 ? () => handleMoveProject(project.id, "up") : undefined}
+                                onMoveDown={i < folderProjects.length - 1 ? () => handleMoveProject(project.id, "down") : undefined}
                                 onDragStart={(e) => handleDragStart(project.id, e)}
                                 onDragOver={(e) => handleDragOverProject(project.id, e)}
                                 onDrop={() => handleDropOnProject(project.id)}
@@ -484,7 +508,7 @@ export default function Home() {
                         </h3>
                       )}
                       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-                        {unfiled.map((project) => (
+                        {unfiled.map((project, i) => (
                           <ProjectCard
                             key={project.id}
                             project={project}
@@ -493,6 +517,8 @@ export default function Home() {
                             onDelete={() => handleDelete(project.id)}
                             onRename={(t) => handleRenameProject(project.id, t)}
                             onMoveToFolder={(fId) => handleMoveToFolder(project.id, fId)}
+                            onMoveUp={i > 0 ? () => handleMoveProject(project.id, "up") : undefined}
+                            onMoveDown={i < unfiled.length - 1 ? () => handleMoveProject(project.id, "down") : undefined}
                             onDragStart={(e) => handleDragStart(project.id, e)}
                             onDragOver={(e) => handleDragOverProject(project.id, e)}
                             onDrop={() => handleDropOnProject(project.id)}
