@@ -5,12 +5,18 @@ import TaskInput from "./components/TaskInput";
 import TaskCard from "./components/TaskCard";
 import KanbanView from "./components/KanbanView";
 import ProjectCard from "./components/ProjectCard";
-import { OrganizedTask, Project } from "./lib/types";
+import { OrganizedTask, Project, Folder } from "./lib/types";
 import {
   loadProjects,
   saveProject,
+  saveProjects,
   deleteProject,
   generateId,
+  loadFolders,
+  saveFolders,
+  createFolder,
+  renameFolder,
+  deleteFolder,
 } from "./lib/storage";
 
 type ViewMode = "list" | "kanban";
@@ -42,8 +48,10 @@ function sortTasks(tasks: OrganizedTask[], sortBy: SortMode): OrganizedTask[] {
 
 export default function Home() {
   const [projects, setProjects] = useState<Project[]>([]);
+  const [folders, setFolders] = useState<Folder[]>([]);
   const [appView, setAppView] = useState<AppView>("dashboard");
   const [activeProject, setActiveProject] = useState<Project | null>(null);
+  const [dragProjectId, setDragProjectId] = useState<string | null>(null);
 
   // New project form state
   const [tasks, setTasks] = useState<string[]>([]);
@@ -62,6 +70,7 @@ export default function Home() {
 
   useEffect(() => {
     setProjects(loadProjects());
+    setFolders(loadFolders());
   }, []);
 
   const resetForm = () => {
@@ -140,6 +149,88 @@ export default function Home() {
       setActiveProject(null);
       setAppView("dashboard");
     }
+  };
+
+  const handleRenameProject = (id: string, newTitle: string) => {
+    const all = loadProjects();
+    const p = all.find((x) => x.id === id);
+    if (p) {
+      p.title = newTitle;
+      saveProjects(all);
+      setProjects(loadProjects());
+    }
+  };
+
+  const handleMoveToFolder = (projectId: string, folderId: string | undefined) => {
+    const all = loadProjects();
+    const p = all.find((x) => x.id === projectId);
+    if (p) {
+      p.folderId = folderId;
+      saveProjects(all);
+      setProjects(loadProjects());
+    }
+  };
+
+  const handleCreateFolder = () => {
+    const name = prompt("Folder name:");
+    if (name?.trim()) {
+      createFolder(name.trim());
+      setFolders(loadFolders());
+    }
+  };
+
+  const handleRenameFolder = (id: string) => {
+    const folder = folders.find((f) => f.id === id);
+    const name = prompt("Rename folder:", folder?.name);
+    if (name?.trim()) {
+      renameFolder(id, name.trim());
+      setFolders(loadFolders());
+    }
+  };
+
+  const handleDeleteFolder = (id: string) => {
+    deleteFolder(id);
+    setFolders(loadFolders());
+    setProjects(loadProjects());
+  };
+
+  const handleDragStart = (projectId: string, e: React.DragEvent) => {
+    setDragProjectId(projectId);
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleDragOverProject = (targetId: string, e: React.DragEvent) => {
+    e.preventDefault();
+    if (!dragProjectId || dragProjectId === targetId) return;
+    e.dataTransfer.dropEffect = "move";
+  };
+
+  const handleDropOnProject = (targetId: string) => {
+    if (!dragProjectId || dragProjectId === targetId) return;
+    const all = loadProjects();
+    const dragIdx = all.findIndex((p) => p.id === dragProjectId);
+    const targetIdx = all.findIndex((p) => p.id === targetId);
+    if (dragIdx < 0 || targetIdx < 0) return;
+    // Also match folder of target
+    all[dragIdx].folderId = all[targetIdx].folderId;
+    const [moved] = all.splice(dragIdx, 1);
+    all.splice(targetIdx, 0, moved);
+    saveProjects(all);
+    setProjects(loadProjects());
+    setDragProjectId(null);
+  };
+
+  const handleDropOnFolder = (folderId: string | undefined, e: React.DragEvent) => {
+    e.preventDefault();
+    if (!dragProjectId) return;
+    const all = loadProjects();
+    const p = all.find((x) => x.id === dragProjectId);
+    if (p) {
+      p.folderId = folderId;
+      saveProjects(all);
+      setProjects(loadProjects());
+    }
+    setDragProjectId(null);
   };
 
   const goHome = () => {
@@ -264,7 +355,7 @@ export default function Home() {
         {/* ── Dashboard ── */}
         {appView === "dashboard" && (
           <div>
-            {projects.length === 0 ? (
+            {projects.length === 0 && folders.length === 0 ? (
               <div className="text-center py-20">
                 <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <svg className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -286,19 +377,131 @@ export default function Home() {
               </div>
             ) : (
               <div>
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">
-                  Your Projects ({projects.length})
-                </h2>
-                <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-                  {projects.map((project) => (
-                    <ProjectCard
-                      key={project.id}
-                      project={project}
-                      onClick={() => openProject(project)}
-                      onDelete={() => handleDelete(project.id)}
-                    />
-                  ))}
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-semibold text-gray-900">
+                    Your Projects ({projects.length})
+                  </h2>
+                  <button
+                    onClick={handleCreateFolder}
+                    className="text-sm text-gray-500 hover:text-gray-700 transition-colors flex items-center gap-1"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                    </svg>
+                    New Folder
+                  </button>
                 </div>
+
+                {/* Folders */}
+                {folders
+                  .sort((a, b) => a.sortOrder - b.sortOrder)
+                  .map((folder) => {
+                    const folderProjects = projects.filter(
+                      (p) => p.folderId === folder.id
+                    );
+                    return (
+                      <div
+                        key={folder.id}
+                        className="mb-6"
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          e.dataTransfer.dropEffect = "move";
+                        }}
+                        onDrop={(e) => handleDropOnFolder(folder.id, e)}
+                      >
+                        <div className="flex items-center gap-2 mb-3">
+                          <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                          </svg>
+                          <h3 className="text-sm font-semibold text-gray-700">
+                            {folder.name}
+                          </h3>
+                          <span className="text-xs text-gray-400">
+                            {folderProjects.length}
+                          </span>
+                          <button
+                            onClick={() => handleRenameFolder(folder.id)}
+                            className="text-gray-300 hover:text-gray-500 transition-colors ml-1"
+                            aria-label="Rename folder"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={() => handleDeleteFolder(folder.id)}
+                            className="text-gray-300 hover:text-red-500 transition-colors"
+                            aria-label="Delete folder"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        </div>
+                        {folderProjects.length > 0 ? (
+                          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                            {folderProjects.map((project) => (
+                              <ProjectCard
+                                key={project.id}
+                                project={project}
+                                folders={folders}
+                                onClick={() => openProject(project)}
+                                onDelete={() => handleDelete(project.id)}
+                                onRename={(t) => handleRenameProject(project.id, t)}
+                                onMoveToFolder={(fId) => handleMoveToFolder(project.id, fId)}
+                                onDragStart={(e) => handleDragStart(project.id, e)}
+                                onDragOver={(e) => handleDragOverProject(project.id, e)}
+                                onDrop={() => handleDropOnProject(project.id)}
+                              />
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="border-2 border-dashed border-gray-200 rounded-xl p-6 text-center text-sm text-gray-400">
+                            Drag projects here
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                {/* Unfiled projects */}
+                {(() => {
+                  const unfiled = projects.filter(
+                    (p) => !p.folderId || !folders.some((f) => f.id === p.folderId)
+                  );
+                  if (unfiled.length === 0) return null;
+                  return (
+                    <div
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        e.dataTransfer.dropEffect = "move";
+                      }}
+                      onDrop={(e) => handleDropOnFolder(undefined, e)}
+                    >
+                      {folders.length > 0 && (
+                        <h3 className="text-sm font-semibold text-gray-500 mb-3">
+                          Unfiled
+                        </h3>
+                      )}
+                      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                        {unfiled.map((project) => (
+                          <ProjectCard
+                            key={project.id}
+                            project={project}
+                            folders={folders}
+                            onClick={() => openProject(project)}
+                            onDelete={() => handleDelete(project.id)}
+                            onRename={(t) => handleRenameProject(project.id, t)}
+                            onMoveToFolder={(fId) => handleMoveToFolder(project.id, fId)}
+                            onDragStart={(e) => handleDragStart(project.id, e)}
+                            onDragOver={(e) => handleDragOverProject(project.id, e)}
+                            onDrop={() => handleDropOnProject(project.id)}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             )}
           </div>

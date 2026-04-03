@@ -17,5 +17,13 @@ export interface Project {
   completedSteps?: number[];
   priorityOverrides?: Record<string, "High" | "Medium" | "Low">;
   plan: OrganizedTask[];
+  folderId?: string;
+  sortOrder?: number;
   createdAt: number;
+}
+
+export interface Folder {
+  id: string;
+  name: string;
+  sortOrder: number;
 }
